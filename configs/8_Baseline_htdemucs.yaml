@@ -1,0 +1,127 @@
+audio:
+  chunk_size: 16000  # 音频块的大小（样本数），通常为采样率 * 片段长度，例如 44100 Hz * 11 秒 = 485100
+  min_mean_abs: 0.001  # 音频信号的最小平均绝对值，用于判断音频是否有效或是否需要处理
+  hop_length: 1024  # STFT（短时傅里叶变换）中的窗口移动步长，影响频谱分辨率和计算效率
+
+training:
+  batch_size: 12  # 训练时的批次大小，即每次训练输入的样本数量
+  gradient_accumulation_steps: 1  # 梯度累积步数，在多个小批次上累积梯度后更新参数，通常用于显存不足的情况
+  grad_clip: 0  # 梯度裁剪阈值，0 表示不进行裁剪，用于控制梯度爆炸问题
+  segment: 1  # 音频片段长度（单位：秒），定义训练时每个样本的时长
+  # shift: 1  # 音频片段的移动步长（单位：秒），用于数据增强或生成更多训练样本
+  samplerate: 16000  # 音频采样率（Hz），44100 Hz 是 CD 音质标准
+  channels: 1  # 音频通道数，2 表示立体声（左右声道）
+  normalize: true  # 是否对音频进行归一化处理，通常用于统一输入幅度
+  instruments:  # 训练中使用的乐器
+    - vocals  # 人声
+    - noise  # 噪声
+  target_instrument: vocals  # 目标乐器
+  num_epochs: 1000  # 训练总轮数，定义训练的总迭代次数
+  num_steps: 200  # 训练总步数，可能与 num_epochs 相关，用于控制训练进度
+  optimizer: adamw  # 优化器类型，此处使用 Adam 优化器，适用于大多数深度学习任务
+  lr: 5.0e-4  # 学习率
+  patience: 2  # 早停耐心值，即性能不再提升后继续训练的轮数，避免过拟合
+  reduce_factor: 0.95  # 学习率衰减因子，当性能停滞时学习率乘以此值以调整训练
+  q: 0.95  # 可能是分位数（quantile）或其他阈值，用于损失函数或评估指标
+  coarse_loss_clip: true  # 是否对粗糙损失进行裁剪，可能用于稳定训练
+  ema_momentum: 0.999  # 指数移动平均（EMA）的动量，用于模型参数平滑更新，提高泛化能力
+  other_fix: false  # 是否修复“其他”部分的处理，适用于多歌曲数据集，确保非人声部分表现为纯乐器
+  use_amp: false  # 是否使用自动混合精度（float16），加速训练并减少显存占用，通常建议开启
+  early_stop:  # 提前停止配置
+    enabled: true  # 是否启用提前停止
+    patience: 30  # 提前停止的耐心值
+    metric: "si-sdr"  # 用于提前停止的指标
+
+augmentations:
+  enable: true  # 是否启用所有数据增强功能，可快速禁用以简化训练
+  loudness: true  # 是否随机调整每个音频 stem 的响度，在 loudness_min 和 loudness_max 范围内变化
+  loudness_min: 0.5  # 响度变化的最小值，控制音量下限
+  loudness_max: 1.5  # 响度变化的最大值，控制音量上限
+  mixup: true  # 是否启用 mixup 数据增强，通过混合相同类型 stem 增加数据多样性（适用于数据集类型 1、2、3）
+  mixup_probs: [0.2, 0.02]  # mixup 的概率，可能分别对应不同 stem（如人声和其他）的混合概率
+  mixup_loudness_min: 0.5  # mixup 时响度的最小值，控制混合后的音量范围
+  mixup_loudness_max: 1.5  # mixup 时响度的最大值，控制混合后的音量范围
+
+inference:
+  num_overlap: 2  # 推理时的重叠次数，用于平滑输出结果，避免分段处理的边界效应
+  batch_size: 8  # 推理时的批次大小，影响推理速度和显存占用
+
+model: htdemucs  # 指定使用的模型为 htdemucs，一种混合 Transformer 的 Demucs 模型
+
+htdemucs:  # htdemucs 模型的详细配置，具体实现见 demucs/htdemucs.py
+  # 通道设置
+  channels: 48  # 模型初始通道数，影响模型容量和计算复杂度
+  channels_time:  # 时间维度的通道数，未指定具体值，可能动态计算
+  growth: 2  # 通道数增长因子，控制模型每一层的通道数递增
+  # STFT 参数
+  num_subbands: 1  # 子带数量，用于频域处理，通常与信号分离任务相关
+  nfft: 4096  # STFT 的 FFT 点数，决定频率分辨率
+  wiener_iters: 0  # Wiener 滤波迭代次数，0 表示不使用 Wiener 后处理
+  end_iters: 0  # 结束迭代次数，可能用于某种后处理，0 表示禁用
+  wiener_residual: false  # 是否保留 Wiener 滤波残差，false 表示不保留
+  cac: true  # 是否启用通道注意力（Channel Attention）或类似技术，提升模型性能
+  # 主结构
+  depth: 4  # 模型深度（层数），控制模型的复杂度
+  rewrite: true  # 是否重写某些层或参数，可能用于优化模型结构
+  # 频率分支
+  multi_freqs: []  # 多频率配置，空列表表示不使用多频率处理
+  multi_freqs_depth: 3  # 多频率处理的深度，若启用则影响频率分支结构
+  freq_emb: 0.2  # 频率嵌入参数，控制频率信息的嵌入强度
+  emb_scale: 10  # 嵌入缩放因子，调整嵌入的大小
+  emb_smooth: true  # 是否对嵌入进行平滑处理，提升嵌入稳定性
+  # 卷积设置
+  kernel_size: 8  # 卷积核大小，影响模型的感受野
+  stride: 4  # 卷积步长，控制特征图的下采样率
+  time_stride: 2  # 时间维度的步长，影响时间分辨率
+  context: 1  # 上下文大小，可能用于卷积的 padding 或 dilation
+  context_enc: 0  # 编码器的上下文大小，0 表示无额外上下文
+  # 归一化
+  norm_starts: 4  # 归一化开始的层数，从第 4 层起应用归一化
+  norm_groups: 4  # 归一化组数，用于 GroupNorm，影响归一化粒度
+  # 深度卷积残差分支
+  dconv_mode: 3  # 深度卷积模式，控制残差分支的行为
+  dconv_depth: 2  # 深度卷积的深度，决定残差分支的层数
+  dconv_comp: 8  # 深度卷积压缩率，控制计算量
+  dconv_init: 1e-3  # 深度卷积初始化值，影响初始权重分布
+  # Transformer 前参数
+  bottom_channels: 512  # 底部通道数，通常为模型最深层的通道数
+  # CrossTransformer 设置
+  # 通用参数
+  t_layers: 5  # Transformer 层数，控制 Transformer 的深度
+  t_hidden_scale: 4.0  # Transformer 隐藏层缩放因子，决定隐藏层维度
+  t_heads: 8  # Transformer 注意力头数，影响多头自注意力的并行性
+  t_dropout: 0.0  # Transformer 的 dropout 率，0 表示无 dropout
+  t_layer_scale: True  # 是否启用层缩放，调整每层的输出幅度
+  t_gelu: True  # 是否使用 GELU 激活函数，提升非线性表达能力
+  # 位置嵌入
+  t_emb: sin  # 位置嵌入类型，sin 表示使用正弦嵌入
+  t_max_positions: 10000  # 最大位置数，用于缩放嵌入
+  t_max_period: 10000.0  # 位置嵌入最大周期，影响正弦嵌入的频率范围
+  t_weight_pos_embed: 1.0  # 位置嵌入权重，控制嵌入的强度
+  t_cape_mean_normalize: True  # 是否对 CAPE（可能是一种嵌入方式）进行均值归一化
+  t_cape_augment: True  # 是否对 CAPE 进行增强，增加嵌入多样性
+  t_cape_glob_loc_scale: [5000.0, 1.0, 1.4]  # CAPE 的全局和局部缩放参数，分别控制范围和幅度
+  t_sin_random_shift: 0  # 正弦嵌入的随机偏移，0 表示无偏移
+  # Transformer 编码器前的归一化
+  t_norm_in: True  # 是否在 Transformer 编码器前进行归一化
+  t_norm_in_group: False  # 是否使用组归一化，false 表示使用其他归一化方式
+  # 编码器内部归一化
+  t_group_norm: False  # 是否在编码器内部使用组归一化
+  t_norm_first: True  # 是否先进行归一化再执行其他操作（LayerNorm First）
+  t_norm_out: True  # 是否在输出时进行归一化
+  # 优化参数
+  t_weight_decay: 0.0  # 权重衰减系数，0 表示无权重衰减
+  t_lr:  # 学习率，未指定具体值，可能动态设置
+  # 稀疏性设置
+  t_sparse_self_attn: False  # 是否使用稀疏自注意力，false 表示禁用
+  t_sparse_cross_attn: False  # 是否使用稀疏交叉注意力，false 表示禁用
+  t_mask_type: diag  # 掩码类型，diag 表示对角掩码
+  t_mask_random_seed: 42  # 掩码随机种子，保证可重复性
+  t_sparse_attn_window: 400  # 稀疏注意力窗口大小，控制注意力范围
+  t_global_window: 100  # 全局窗口大小，影响全局注意力范围
+  t_sparsity: 0.95  # 稀疏度，控制稀疏注意力的稀疏程度
+  t_auto_sparsity: False  # 是否自动调整稀疏度，false 表示固定稀疏度
+  # 交叉编码优先
+  t_cross_first: False  # 是否优先进行交叉编码，false 表示按默认顺序
+  # 权重初始化
+  rescale: 0.1  # 权重重缩放因子，调整初始权重大小

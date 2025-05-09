@@ -1,0 +1,131 @@
+audio:
+  chunk_size: 131584      # 音频分块大小
+  dim_f: 1024            # 频率维度大小
+  dim_t: 515             # 时间维度大小
+  hop_length: 512        # STFT的跳跃长度
+  n_fft: 2048           # FFT点数
+  num_channels: 1        # 音频通道数,1表示单声道
+  sample_rate: 16000     # 采样率
+  min_mean_abs: 0.000    # 最小平均绝对值
+
+model:
+  dim: 48               # 模型隐藏层维度,从384减小到48以减少参数量
+  depth: 3              # Transformer总层数,从12减小到3
+  dim_head: 64          # 注意力头的维度
+  heads: 8              # 注意力头的数量
+  flash_attn: true      # 是否使用flash attention优化
+  use_rotary_pos: true  # 是否使用旋转位置编码（RoPE）
+  max_seq_len: 1000         # 最大序列长度
+  freqs_per_bands: !!python/tuple  # 频带划分配置,定义每个频带包含的频率点数
+    - 2                 # 前24个频带各包含2个频率点
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 4                 # 接下来12个频带各包含4个频率点
+    - 4
+    - 4
+    - 4
+    - 4
+    - 4
+    - 4
+    - 4
+    - 4
+    - 4
+    - 4
+    - 4
+    - 12               # 接下来8个频带各包含12个频率点
+    - 12
+    - 12
+    - 12
+    - 12
+    - 12
+    - 12
+    - 12
+    - 24               # 接下来8个频带各包含24个频率点
+    - 24
+    - 24
+    - 24
+    - 24
+    - 24
+    - 24
+    - 24
+    - 48               # 接下来8个频带各包含48个频率点
+    - 48
+    - 48
+    - 48
+    - 48
+    - 48
+    - 48
+    - 48
+    - 128              # 最后两个频带分别包含128和129个频率点
+    - 129
+  stereo: false         # 是否使用立体声,false表示单声道
+  num_stems: 1          # 分离的音源数量,1表示只分离人声
+  time_transformer_depth: 1    # 时间维度Transformer的层数
+  freq_transformer_depth: 1    # 频率维度Transformer的层数
+  linear_transformer_depth: 0  # 线性注意力层数,0表示不使用
+  attn_dropout: 0.1     # 注意力层的dropout率
+  ff_dropout: 0.1       # 前馈网络的dropout率
+  dim_freqs_in: 1025    # 输入频率维度
+  stft_n_fft: 2048      # STFT的FFT点数
+  stft_hop_length: 512  # STFT的跳跃长度
+  stft_win_length: 2048 # STFT的窗口长度
+  stft_normalized: false # 是否对STFT结果进行归一化
+  mask_estimator_depth: 2  # 掩码估计器的层数
+  multi_stft_resolution_loss_weight: 1.0  # 多分辨率STFT损失的权重
+  multi_stft_resolutions_window_sizes: !!python/tuple  # 多分辨率STFT的窗口大小配置
+    - 4096
+    - 2048
+    - 1024
+    - 512
+    - 256
+  multi_stft_hop_size: 147    # 多分辨率STFT的跳跃长度
+  multi_stft_normalized: False # 是否对多分辨率STFT结果归一化
+
+training:
+  batch_size: 12  # 每个批次的样本数量
+  gradient_accumulation_steps: 1  # 梯度累积的步数
+  grad_clip: 0  # 梯度裁剪的阈值
+  instruments:  # 训练中使用的乐器
+    - vocals  # 人声
+    - noise  # 噪声
+  lr: 5.0e-4  # 学习率
+  patience: 2  # 学习率调度的耐心值
+  reduce_factor: 0.95  # 学习率衰减因子
+  target_instrument: vocals  # 目标乐器
+  num_epochs: 1000  # 训练的轮数
+  num_steps: 200  # 每个epoch的步数
+  q: 0.95  # 量化参数
+  coarse_loss_clip: true  # 是否对粗损失进行裁剪
+  ema_momentum: 0.999  # 指数移动平均的动量
+  optimizer: adamw  # 优化器类型
+  other_fix: false  # 其他修正标志
+  use_amp: false  # 是否使用自动混合精度
+  early_stop:  # 提前停止配置
+    enabled: true  # 是否启用提前停止
+    patience: 30  # 提前停止的耐心值
+    metric: "si-sdr"  # 用于提前停止的指标
+
+inference:
+  batch_size: 10           # 每个批次的样本数量
+  num_overlap: 4           # 重叠的数量
