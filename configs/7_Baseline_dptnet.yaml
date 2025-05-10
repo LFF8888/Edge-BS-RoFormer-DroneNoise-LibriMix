@@ -1,0 +1,39 @@
+audio:
+  chunk_size: 131584
+  dim_f: 1024
+  dim_t: 515
+  hop_length: 512
+  n_fft: 2048
+  num_channels: 1
+  sample_rate: 16000
+  min_mean_abs: 0.000
+
+model: dptnet
+
+training:
+  batch_size: 12  # 每个批次的样本数量
+  gradient_accumulation_steps: 1  # 梯度累积的步数
+  grad_clip: 0  # 梯度裁剪的阈值
+  instruments:  # 训练中使用的乐器
+    - vocals  # 人声
+    - noise  # 噪声
+  lr: 5.0e-4  # 学习率
+  patience: 2  # 学习率调度的耐心值
+  reduce_factor: 0.95  # 学习率衰减因子
+  target_instrument: vocals  # 目标乐器
+  num_epochs: 1000  # 训练的轮数
+  num_steps: 200  # 每个epoch的步数
+  q: 0.95  # 量化参数
+  coarse_loss_clip: true  # 是否对粗损失进行裁剪
+  ema_momentum: 0.999  # 指数移动平均的动量
+  optimizer: adamw  # 优化器类型
+  other_fix: false  # 其他修正标志
+  use_amp: false  # 是否使用自动混合精度
+  early_stop:  # 提前停止配置
+    enabled: true  # 是否启用提前停止
+    patience: 30  # 提前停止的耐心值
+    metric: "si-sdr"  # 用于提前停止的指标
+
+inference:
+  batch_size: 10           # 每个批次的样本数量
+  num_overlap: 4           # 重叠的数量
